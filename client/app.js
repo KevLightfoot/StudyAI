@@ -92,8 +92,11 @@ function renderTopics(topics) {
   generateBtn.disabled = false;
 }
 
-let pandaMessageIndex = 0;
-let pandaMessageTimer = null;
+const pandaIntroMessages = [
+  "sorry we are slow, our papa is impoverished",
+  "yes, he has to use a free web host cause he has no moneys",
+  "Well, while we wait how about some old Chinese proverbs?"
+];
 
 const pandaMessages = [
   "Patience is a tree with bitter roots that bears sweet fruits.",
@@ -104,48 +107,18 @@ const pandaMessages = [
   "To know the road ahead, ask those coming back.",
   "A journey of a thousand miles begins with a single step. – Lao Tzu",
   "Do not fear going slowly. Fear only standing still.",
-  "The gem cannot be polished without friction, nor man perfected without trials.",
-  "A closed mind is like a closed book; just a block of wood.",
   "Teachers open the door, but you must enter by yourself.",
   "Learning is a treasure that will follow its owner everywhere.",
-  "Be not afraid of growing slowly, be afraid only of standing still.",
   "The bamboo that bends is stronger than the oak that resists.",
-  "Tension is who you think you should be. Relaxation is who you are.",
-  "The obstacle is the path.",
-  "One beam, no matter how big, cannot support an entire house alone.",
-  "A wise man adapts himself to circumstances, as water shapes itself to the vessel.",
   "Dig the well before you are thirsty.",
-  "A bird does not sing because it has an answer. It sings because it has a song.",
-  "He who conquers himself is the mightiest warrior.",
-  "The temptation to quit will be greatest just before you are about to succeed.",
-  "Knowledge without practice is useless. Practice without knowledge is dangerous.",
-  "If you are patient in one moment of anger, you will escape one hundred days of sorrow.",
-  "An inch of time is an inch of gold, but you can't buy that inch of time with an inch of gold.",
-  "The snow goose need not bathe to make itself white.",
-  "The wise adapt themselves to circumstances, as water molds itself to the pitcher.",
-  "A man who cannot tolerate small misfortunes can never accomplish great things.",
-  "To learn a language is to have one more window from which to look at the world.",
   "Better to light a candle than curse the darkness.",
   "Even the tallest tower began on the ground.",
-  "Do not remove a fly from your friend's forehead with a hatchet.",
-  "A diamond with a flaw is worth more than a pebble without imperfections.",
-  "The person who says something is impossible should not interrupt the person doing it.",
-  "You must climb the mountain to see the plain.",
-  "An old dog barks not in vain.",
-  "The stronger the breeze, the stronger the trees.",
-  "Silence is a source of great strength.",
-  "The nail that sticks out gets hammered down.",
-  "One kind word can warm three winter months.",
-  "The soul would have no rainbow had the eyes no tears.",
-  "A smile will gain you ten more years of life.",
-  "The wise man never lays all his treasures in one place.",
-  "Fall seven times, stand up eight.",
-  "A man grows most tired while standing still.",
-  "Do not confine your children to your own learning, for they were born in another time.",
-  "The fire you kindle for your enemy often burns yourself more than them.",
   "True wisdom is knowing what you do not know.",
   "Pearls do not lie on the seashore. If you want one, you must dive for it."
 ];
+
+let introMessageIndex = 0;
+let remainingPandaMessages = [];
 
 const pandaPositions = ["top", "right", "bottom", "left"];
 
@@ -171,7 +144,18 @@ function showPandaPopout() {
     remainingPandaMessages = shuffleArray(pandaMessages);
   }
 
-  const message = remainingPandaMessages.shift();
+  let message;
+
+  if (introMessageIndex < pandaIntroMessages.length) {
+    message = pandaIntroMessages[introMessageIndex];
+    introMessageIndex++;
+  } else {
+    if (remainingPandaMessages.length === 0) {
+      remainingPandaMessages = shuffleArray(pandaMessages);
+    }
+
+    message = remainingPandaMessages.shift();
+  }
 
   const position = pandaPositions[pandaMessageIndex % pandaPositions.length];
 
@@ -184,7 +168,13 @@ function showPandaPopout() {
   `;
 
   loadingPanda.appendChild(popout);
-
+  
+  setTimeout(() => {
+    popout.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+  }, 150);
   pandaMessageIndex++;
 
   pandaMessageTimer = setTimeout(() => {
@@ -192,11 +182,18 @@ function showPandaPopout() {
   }, getReadTime(message));
 }
 
+function scrollToElement(element) {
+  element.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
 function startPandaMessages() {
   stopPandaMessages();
 
   pandaMessageIndex = 0;
-
+  introMessageIndex = 0;
   remainingPandaMessages = shuffleArray(pandaMessages);
 
   showPandaPopout();
@@ -473,6 +470,7 @@ extractBtn.addEventListener("click", async () => {
   }
 
   showTopicsPanda();
+  scrollToElement(document.querySelector("#topicsContainer").closest(".card"));
   output.textContent = "Waiting for topic selection...";
   downloadBtn.classList.add("hidden");
 
@@ -527,6 +525,7 @@ generateBtn.addEventListener("click", async () => {
   };
 
   showStudyGuidePanda("StudyAI is building your study guide...", selectedTopics.length);
+  scrollToElement(document.querySelector(".output-card"));
   startPandaMessages();
 
   generateBtn.disabled = true;
@@ -562,6 +561,7 @@ generateBtn.addEventListener("click", async () => {
 
     stopPandaMessages();
     hideStudyGuidePanda();
+    scrollToElement(document.querySelector(".output-card"));
     renderStudyGuide(latestStudyGuide);
   } catch (error) {
     console.error(error);
