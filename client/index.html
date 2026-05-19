@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>StudyAI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>StudyAI</h1>
+      <p>Paste a study guide or topic list. StudyAI will extract topics, let you choose what matters, then build a real study guide.</p>
+    </header>
+
+    <section class="card">
+      <h2>1. Paste Study Material</h2>
+      <textarea id="studyGuideInput" placeholder="Paste your study guide, objectives, notes, or topic list here..."></textarea>
+      <button id="extractBtn">Extract Topics</button>
+    </section>
+
+    <section class="card">
+      <h2>2. Choose Topics</h2>
+
+      <div id="topicsContainer">Extracted topics will appear here.</div>
+
+      <div id="topicsLoadingPanda" class="hidden">
+        <img src="assets/panda2.gif" alt="Dancing panda">
+        <p>StudyAI is extracting your topics...</p>
+      </div>
+
+      <button id="generateBtn" disabled>Generate Study Kit</button>
+    </section>
+
+    <section class="card output-card">
+      <h2>3. Generated Study Kit</h2>
+
+      <div id="loadingPanda" class="hidden">
+        <img src="assets/panda1.gif" alt="Dancing panda">
+        <p>StudyAI is building your study guide...</p>
+      </div>
+
+      <button id="downloadBtn" class="hidden">Download Study Guide</button>
+
+      <div id="output">Your result will appear here.</div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
