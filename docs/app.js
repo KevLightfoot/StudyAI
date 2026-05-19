@@ -17,6 +17,20 @@ const topicsLoadingPanda = document.getElementById("topicsLoadingPanda");
 const progressBar = document.getElementById("progressBar");
 const progressText = document.getElementById("progressText");
 
+const uploadPdfBtn = document.getElementById("uploadPdfBtn");
+const pdfInput = document.getElementById("pdfInput");
+const openSavedBtn = document.getElementById("openSavedBtn");
+const saveTextBtn = document.getElementById("saveTextBtn");
+
+const savedFilesModal = document.getElementById("savedFilesModal");
+const savedFilesList = document.getElementById("savedFilesList");
+const closeSavedBtn = document.getElementById("closeSavedBtn");
+
+const textareaCoach = document.getElementById("textareaCoach");
+const closeCoachBtn = document.getElementById("closeCoachBtn");
+
+const SAVED_FILES_KEY = "studyai_saved_materials";
+
 let extractedTopics = [];
 let latestStudyGuide = {
   studyGuide: []
@@ -37,6 +51,74 @@ function updateProgress(completed, total) {
 
   progressBar.style.width = `${percent}%`;
   progressText.textContent = `Completed ${completed} of ${total} topics...`;
+}
+
+function getSavedFiles() {
+  return JSON.parse(localStorage.getItem(SAVED_FILES_KEY)) || [];
+}
+
+function saveFiles(files) {
+  localStorage.setItem(SAVED_FILES_KEY, JSON.stringify(files));
+}
+
+function showCoachTip() {
+  if (!textareaCoach) return;
+
+  setTimeout(() => {
+    textareaCoach.classList.remove("hidden");
+
+    setTimeout(() => {
+      textareaCoach.classList.add("hidden");
+    }, 9000);
+  }, 3000);
+}
+
+async function extractTextFromPdf(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  let fullText = "";
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+
+    const pageText = textContent.items
+      .map((item) => item.str)
+      .join(" ");
+
+    fullText += `\n\n--- Page ${pageNumber} ---\n${pageText}`;
+  }
+
+  return fullText.trim();
+}
+
+function renderSavedFiles() {
+  const savedFiles = getSavedFiles();
+
+  savedFilesList.innerHTML = "";
+
+  if (savedFiles.length === 0) {
+    savedFilesList.innerHTML = `<p>No saved files yet.</p>`;
+    return;
+  }
+
+  savedFiles.forEach((file, index) => {
+    const div = document.createElement("div");
+    div.className = "saved-item";
+
+    div.innerHTML = `
+      <h3>${file.title}</h3>
+      <p>${file.text.slice(0, 180)}...</p>
+
+      <div class="saved-item-actions">
+        <button type="button" data-action="load" data-index="${index}">Load Into Textbox</button>
+        <button type="button" data-action="delete" data-index="${index}">Delete</button>
+      </div>
+    `;
+
+    savedFilesList.appendChild(div);
+  });
 }
 
 function showTopicsPanda() {
@@ -355,6 +437,88 @@ function createChatBox(topic, topicIndex) {
       messages.scrollTop = messages.scrollHeight;
     }
   }
+
+  uploadPdfBtn.addEventListener("click", () => {
+  pdfInput.click();
+});
+
+pdfInput.addEventListener("change", async () => {
+  const file = pdfInput.files[0];
+
+  if (!file) return;
+
+  studyGuideInput.value = "Reading PDF...";
+
+  try {
+    const text = await extractTextFromPdf(file);
+    studyGuideInput.value = text;
+  } catch (error) {
+    console.error(error);
+    studyGuideInput.value = "";
+    alert("Could not read that PDF.");
+  } finally {
+    pdfInput.value = "";
+  }
+});
+
+saveTextBtn.addEventListener("click", () => {
+  const text = studyGuideInput.value.trim();
+
+  if (!text) {
+    alert("Paste or upload something first.");
+    return;
+  }
+
+  const title = prompt("Name this saved material:");
+
+  if (!title) return;
+
+  const savedFiles = getSavedFiles();
+
+  savedFiles.unshift({
+    title,
+    text,
+    savedAt: new Date().toISOString()
+  });
+
+  saveFiles(savedFiles);
+
+  alert("Saved!");
+});
+
+openSavedBtn.addEventListener("click", () => {
+  renderSavedFiles();
+  savedFilesModal.classList.remove("hidden");
+});
+
+closeSavedBtn.addEventListener("click", () => {
+  savedFilesModal.classList.add("hidden");
+});
+
+savedFilesList.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+
+  if (!button) return;
+
+  const index = Number(button.dataset.index);
+  const action = button.dataset.action;
+  const savedFiles = getSavedFiles();
+
+  if (action === "load") {
+    studyGuideInput.value = savedFiles[index].text;
+    savedFilesModal.classList.add("hidden");
+  }
+
+  if (action === "delete") {
+    savedFiles.splice(index, 1);
+    saveFiles(savedFiles);
+    renderSavedFiles();
+  }
+});
+
+closeCoachBtn.addEventListener("click", () => {
+  textareaCoach.classList.add("hidden");
+});
 
   button.addEventListener("click", askQuestion);
 
@@ -763,6 +927,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (closeWelcomeBtn && welcomeOverlay) {
     closeWelcomeBtn.addEventListener("click", () => {
       welcomeOverlay.classList.add("hidden");
+      showCoachTip();
     });
   }
 });

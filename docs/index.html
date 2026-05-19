@@ -4,6 +4,7 @@
   <title>StudyAI</title>
   <link rel="stylesheet" href="style.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
   <main>
@@ -15,6 +16,22 @@
     <section class="card">
       <h2>1. Paste Study Material</h2>
       <textarea id="studyGuideInput" placeholder="Paste your study guide, objectives, notes, or topic list here..."></textarea>
+      
+      <div class="input-actions">
+        <button id="uploadPdfBtn" type="button">Upload PDF</button>
+        <button id="openSavedBtn" type="button">Open Saved Files</button>
+        <button id="saveTextBtn" type="button">Save Current Text</button>
+      </div>
+
+      <input id="pdfInput" type="file" accept="application/pdf" hidden>
+
+      <div id="textareaCoach" class="textarea-coach hidden">
+        <img src="assets/welcome_panda.gif" alt="Panda">
+        <div>
+          <button id="closeCoachBtn" type="button">×</button>
+          <p>You can add files here or view your saved ones.</p>
+        </div>
+      </div>
       <button id="extractBtn">Extract Topics</button>
     </section>
 
@@ -51,11 +68,19 @@
     </section>
   </main>
 
+  <div id="savedFilesModal" class="saved-modal hidden">
+    <div class="saved-card">
+      <h2>Saved Study Materials</h2>
+      <div id="savedFilesList"></div>
+      <button id="closeSavedBtn" type="button">Close</button>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 <div id="welcomeOverlay" class="welcome-overlay">
   <div class="welcome-card">
-    <img src="assets/welcome_panda.gif" alt="Welcome panda">
+    <img src="assets/pointing_panda.png" alt="Welcome panda">
 
     <h2>Welcome to StudyAI</h2>
 

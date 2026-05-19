@@ -494,3 +494,97 @@ button:disabled {
 #welcomeOverlay.hidden {
   display: none;
 }
+
+.input-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  position: relative;
+}
+
+.input-actions button {
+  margin-top: 0;
+}
+
+.textarea-coach {
+  position: absolute;
+  left: 30px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #020617;
+  border: 1px solid #38bdf8;
+  border-radius: 16px;
+  padding: 12px;
+  max-width: 360px;
+  z-index: 20;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+}
+
+.textarea-coach img {
+  width: 70px;
+  height: 70px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.textarea-coach p {
+  margin: 0;
+}
+
+#closeCoachBtn {
+  float: right;
+  margin: 0 0 4px 8px;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.saved-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10001;
+  padding: 20px;
+}
+
+.saved-card {
+  background: #1e293b;
+  border: 1px solid #38bdf8;
+  border-radius: 20px;
+  padding: 24px;
+  width: 100%;
+  max-width: 650px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.saved-item {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.saved-item h3 {
+  margin: 0 0 8px;
+}
+
+.saved-item p {
+  margin: 0 0 10px;
+  color: #94a3b8;
+}
+
+.saved-item-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.saved-item-actions button {
+  margin-top: 0;
+}
