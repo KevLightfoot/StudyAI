@@ -279,6 +279,70 @@ ${question}
   }
 });
 
+
+app.post("/api/generate-flashcards", async (req, res) => {
+  try {
+    const { topic, studyGuideText } = req.body;
+
+    if (!topic || !topic.title) {
+      return res.status(400).json({
+        error: "Missing topic."
+      });
+    }
+
+    const prompt = `
+You are StudyAI.
+
+Create useful flashcards for this study topic.
+
+Rules:
+- Make the cards exam-focused.
+- Use clear, simple wording.
+- Include definitions, comparisons, processes, common traps, and application-style cards.
+- Do NOT make cards too long.
+- Generate 10 to 16 flashcards.
+
+Return ONLY valid JSON.
+No markdown.
+No code fences.
+
+Format exactly:
+{
+  "flashcards": [
+    {
+      "front": "Question or prompt",
+      "back": "Answer"
+    }
+  ]
+}
+
+Topic:
+${JSON.stringify(topic, null, 2)}
+
+Original study material:
+${studyGuideText || "No original material provided."}
+`;
+
+    const response = await openai.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt
+    });
+
+    console.log("FLASHCARD GENERATION USAGE:");
+    console.log(response.usage);
+
+    const parsed = parseJsonFromModel(response.output_text);
+
+    res.json(parsed);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Something went wrong generating flashcards."
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`StudyAI server running on http://localhost:${PORT}`);
 });

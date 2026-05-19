@@ -6,6 +6,8 @@ const closeWelcomeBtn = document.getElementById("closeWelcomeBtn");
 const extractBtn = document.getElementById("extractBtn");
 const generateBtn = document.getElementById("generateBtn");
 const downloadBtn = document.getElementById("downloadBtn");
+const saveStudyKitBtn = document.getElementById("saveStudyKitBtn");
+const saveAllBtn = document.getElementById("saveAllBtn");
 
 const studyGuideInput = document.getElementById("studyGuideInput");
 const topicsContainer = document.getElementById("topicsContainer");
@@ -21,7 +23,6 @@ const uploadPdfBtn = document.getElementById("uploadPdfBtn");
 const pdfInput = document.getElementById("pdfInput");
 const openSavedBtn = document.getElementById("openSavedBtn");
 const saveTextBtn = document.getElementById("saveTextBtn");
-const savePdfTextBtn = document.getElementById("savePdfTextBtn");
 const savePdfFileBtn = document.getElementById("savePdfFileBtn");
 const PDF_DB_NAME = "studyai_pdf_db";
 const PDF_STORE_NAME = "pdf_files";
@@ -51,6 +52,8 @@ let latestStudyGuide = {
   studyGuide: []
 };
 
+let currentStudyKitTitle = "StudyAI Study Guide";
+
 function chunkArray(array, size) {
   const chunks = [];
 
@@ -74,6 +77,160 @@ function getSavedFiles() {
 
 function saveFiles(files) {
   localStorage.setItem(SAVED_FILES_KEY, JSON.stringify(files));
+}
+
+
+function sanitizeFileName(title) {
+  return title
+    .replace(/[^a-z0-9]/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "StudyAI-Study-Guide";
+}
+
+function makeStudyKitTitle(topics) {
+  if (!topics || topics.length === 0) {
+    return "StudyAI Study Guide";
+  }
+
+  const normalized = topics.map((topic) => topic.trim()).filter(Boolean);
+
+  if (normalized.length === 1) {
+    return `${normalized[0]} Study Guide`;
+  }
+
+  if (normalized.length === 2) {
+    return `${normalized[0]} and ${normalized[1]} Study Guide`;
+  }
+
+  const systemTopics = normalized.filter((topic) =>
+    topic.toLowerCase().includes("system")
+  );
+
+  if (systemTopics.length >= 4) {
+    return "Body Systems Study Guide";
+  }
+
+  if (normalized.length <= 4) {
+    return `${normalized.slice(0, -1).join(", ")}, and ${normalized.at(-1)} Study Guide`;
+  }
+
+  return `${normalized[0]}, ${normalized[1]}, and ${normalized.length - 2} More Topics Study Guide`;
+}
+
+function saveSavedItem(item) {
+  const savedFiles = getSavedFiles();
+
+  savedFiles.unshift({
+    id: item.id || crypto.randomUUID(),
+    savedAt: new Date().toISOString(),
+    ...item
+  });
+
+  saveFiles(savedFiles);
+}
+
+function promptForSaveTitle(defaultTitle) {
+  const title = prompt("Save as:", defaultTitle);
+
+  if (!title || !title.trim()) {
+    return null;
+  }
+
+  return title.trim();
+}
+
+function showSaveButtons() {
+  if (saveStudyKitBtn) saveStudyKitBtn.classList.remove("hidden");
+  if (saveAllBtn) saveAllBtn.classList.remove("hidden");
+}
+
+function hideSaveButtons() {
+  if (saveStudyKitBtn) saveStudyKitBtn.classList.add("hidden");
+  if (saveAllBtn) saveAllBtn.classList.add("hidden");
+}
+
+function saveCurrentStudyKit() {
+  if (!latestStudyGuide.studyGuide || latestStudyGuide.studyGuide.length === 0) {
+    alert("Generate a study kit first.");
+    return false;
+  }
+
+  const title = promptForSaveTitle(currentStudyKitTitle);
+
+  if (!title) {
+    return false;
+  }
+
+  currentStudyKitTitle = title;
+
+  saveSavedItem({
+    type: "study-kit",
+    title,
+    data: latestStudyGuide
+  });
+
+  alert("Study kit saved!");
+  return true;
+}
+
+function getAllGeneratedFlashcards() {
+  if (!latestStudyGuide.studyGuide) {
+    return [];
+  }
+
+  return latestStudyGuide.studyGuide
+    .filter((topic) => topic.flashcards && topic.flashcards.length > 0)
+    .map((topic) => ({
+      topicTitle: topic.title,
+      flashcards: topic.flashcards
+    }));
+}
+
+function saveFlashcardsForTopic(topic) {
+  if (!topic.flashcards || topic.flashcards.length === 0) {
+    alert("Generate flashcards for this topic first.");
+    return false;
+  }
+
+  const title = promptForSaveTitle(`${topic.title} Flashcards`);
+
+  if (!title) {
+    return false;
+  }
+
+  saveSavedItem({
+    type: "flashcards",
+    title,
+    topicTitle: topic.title,
+    flashcards: topic.flashcards
+  });
+
+  alert("Flashcards saved!");
+  return true;
+}
+
+function saveAllCurrentStudyMaterials() {
+  if (!latestStudyGuide.studyGuide || latestStudyGuide.studyGuide.length === 0) {
+    alert("Generate a study kit first.");
+    return;
+  }
+
+  const title = promptForSaveTitle(currentStudyKitTitle);
+
+  if (!title) {
+    return;
+  }
+
+  currentStudyKitTitle = title;
+
+  saveSavedItem({
+    type: "study-kit-bundle",
+    title,
+    data: latestStudyGuide,
+    flashcardSets: getAllGeneratedFlashcards()
+  });
+
+  alert("Study kit and generated flashcards saved!");
 }
 
 function openPdfDb() {
@@ -214,24 +371,47 @@ function renderSavedFiles() {
     const div = document.createElement("div");
     div.className = "saved-item";
 
-    const previewText = file.type === "pdf"
-      ? "Saved PDF file"
-      : `${file.text.slice(0, 180)}...`;
+    let previewText = "Saved item";
+    let buttons = "";
 
-    const buttons = file.type === "pdf"
-      ? `
+    if (file.type === "pdf") {
+      previewText = "Saved PDF file";
+      buttons = `
         <button type="button" data-action="open-pdf" data-index="${index}">Open PDF</button>
         <button type="button" data-action="use-pdf-text" data-index="${index}">Use Full Text</button>
         <button type="button" data-action="delete" data-index="${index}">Delete</button>
-      `
-      : `
+      `;
+    } else if (file.type === "study-kit" || file.type === "study-kit-bundle") {
+      const topicCount = file.data?.studyGuide?.length || 0;
+      const flashcardCount = file.flashcardSets?.reduce((sum, set) => sum + set.flashcards.length, 0) || 0;
+
+      previewText = `${topicCount} topics${flashcardCount ? ` • ${flashcardCount} flashcards` : ""}`;
+      buttons = `
+        <button type="button" data-action="open-study-kit" data-index="${index}">Open Study Kit</button>
+        <button type="button" data-action="delete" data-index="${index}">Delete</button>
+      `;
+    } else if (file.type === "flashcards") {
+      previewText = `${file.flashcards?.length || 0} flashcards for ${file.topicTitle || "a topic"}`;
+      buttons = `
+        <button type="button" data-action="open-flashcards" data-index="${index}">Open Flashcards</button>
+        <button type="button" data-action="delete" data-index="${index}">Delete</button>
+      `;
+    } else {
+      previewText = `${file.text?.slice(0, 180) || "Saved text"}...`;
+      buttons = `
         <button type="button" data-action="load" data-index="${index}">Load Into Textbox</button>
         <button type="button" data-action="delete" data-index="${index}">Delete</button>
       `;
+    }
+
+    const savedDate = file.savedAt
+      ? new Date(file.savedAt).toLocaleString()
+      : "Unknown date";
 
     div.innerHTML = `
       <h3>${file.title}</h3>
       <p>${previewText}</p>
+      <p class="saved-date">Saved: ${savedDate}</p>
 
       <div class="saved-item-actions">
         ${buttons}
@@ -254,6 +434,7 @@ function hideTopicsPanda() {
 function showStudyGuidePanda(message, totalTopics) {
   output.textContent = "";
   downloadBtn.classList.add("hidden");
+  hideSaveButtons();
 
   progressBar.style.width = "0%";
   progressText.textContent = `Preparing ${totalTopics} topics...`;
@@ -470,6 +651,146 @@ function makeRecallCards(activeRecall) {
   }).join("");
 }
 
+
+function renderFlashcards(topic, container) {
+  const cards = topic.flashcards || [];
+
+  if (cards.length === 0) {
+    container.innerHTML = `<p class="empty-text">No flashcards generated yet.</p>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="flashcard-grid">
+      ${cards.map((card, index) => `
+        <details class="flashcard">
+          <summary>
+            <span>Card ${index + 1}</span>
+            <strong>${card.front}</strong>
+          </summary>
+          <p>${card.back}</p>
+        </details>
+      `).join("")}
+    </div>
+  `;
+}
+
+async function generateFlashcardsForTopic(topic, button, container) {
+  button.disabled = true;
+  button.textContent = "Generating Flashcards...";
+
+  container.innerHTML = `
+    <div class="flashcard-loading">
+      <img src="assets/panda_thinking.gif" alt="Panda thinking">
+      <span>StudyAI is making flashcards...</span>
+    </div>
+  `;
+
+  try {
+    const studyGuideText = studyGuideInput.value.trim();
+
+    const response = await fetch(`${API_BASE}/api/generate-flashcards`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        topic,
+        studyGuideText
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Flashcard generation failed.");
+    }
+
+    topic.flashcards = data.flashcards || [];
+    renderFlashcards(topic, container);
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<p class="empty-text">Something went wrong generating flashcards.</p>`;
+  } finally {
+    button.disabled = false;
+    button.textContent = topic.flashcards?.length ? "Regenerate Flashcards" : "Generate Flashcards";
+  }
+}
+
+function createFlashcardBox(topic, topicIndex) {
+  const wrapper = document.createElement("section");
+  wrapper.className = "topic-flashcard-section";
+
+  wrapper.innerHTML = `
+    <h4>Flashcards</h4>
+    <p class="chat-helper">Generate exam-style flashcards for this topic when you are ready.</p>
+
+    <div class="flashcard-actions">
+      <button type="button" id="generateFlashcards-${topicIndex}">
+        ${topic.flashcards?.length ? "Regenerate Flashcards" : "Generate Flashcards"}
+      </button>
+      <button type="button" id="saveFlashcards-${topicIndex}">
+        Save Flashcards
+      </button>
+    </div>
+
+    <div class="flashcard-output" id="flashcardOutput-${topicIndex}"></div>
+  `;
+
+  const generateButton = wrapper.querySelector(`#generateFlashcards-${topicIndex}`);
+  const saveButton = wrapper.querySelector(`#saveFlashcards-${topicIndex}`);
+  const cardOutput = wrapper.querySelector(`#flashcardOutput-${topicIndex}`);
+
+  renderFlashcards(topic, cardOutput);
+
+  generateButton.addEventListener("click", () => {
+    generateFlashcardsForTopic(topic, generateButton, cardOutput);
+  });
+
+  saveButton.addEventListener("click", () => {
+    saveFlashcardsForTopic(topic);
+  });
+
+  return wrapper;
+}
+
+function renderStandaloneFlashcards(savedItem) {
+  output.innerHTML = "";
+
+  currentStudyKitTitle = savedItem.title || "Saved Flashcards";
+
+  const wrapper = document.createElement("details");
+  wrapper.className = "main-dropdown";
+  wrapper.open = true;
+
+  wrapper.innerHTML = `
+    <summary>${currentStudyKitTitle}</summary>
+    <div class="topic-content">
+      <section class="study-section">
+        <h4>Flashcards</h4>
+        <p>${savedItem.topicTitle ? `Topic: ${savedItem.topicTitle}` : ""}</p>
+        <div class="flashcard-grid">
+          ${(savedItem.flashcards || []).map((card, index) => `
+            <details class="flashcard">
+              <summary>
+                <span>Card ${index + 1}</span>
+                <strong>${card.front}</strong>
+              </summary>
+              <p>${card.back}</p>
+            </details>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+
+  output.appendChild(wrapper);
+  downloadBtn.classList.add("hidden");
+  hideSaveButtons();
+  savedFilesModal.classList.add("hidden");
+  scrollToElement(document.querySelector(".output-card"));
+}
+
 function createChatBox(topic, topicIndex) {
   const chatWrapper = document.createElement("section");
   chatWrapper.className = "topic-chat-section";
@@ -578,6 +899,7 @@ function renderStudyGuide(data) {
   if (!data.studyGuide || data.studyGuide.length === 0) {
     output.textContent = "No study guide generated.";
     downloadBtn.classList.add("hidden");
+    hideSaveButtons();
     return;
   }
 
@@ -586,7 +908,7 @@ function renderStudyGuide(data) {
   mainDetails.open = true;
 
   mainDetails.innerHTML = `
-    <summary>Study Guide</summary>
+    <summary>${currentStudyKitTitle}</summary>
     <div class="topics-output"></div>
   `;
 
@@ -661,13 +983,16 @@ function renderStudyGuide(data) {
     `;
 
     const topicContent = topicDetails.querySelector(".topic-content");
+
     topicContent.appendChild(createChatBox(topic, index));
+    topicContent.appendChild(createFlashcardBox(topic, index));
 
     topicsOutput.appendChild(topicDetails);
   });
 
   output.appendChild(mainDetails);
   downloadBtn.classList.remove("hidden");
+  showSaveButtons();
 }
 
 extractBtn.addEventListener("click", async () => {
@@ -682,6 +1007,7 @@ extractBtn.addEventListener("click", async () => {
   scrollToElement(document.querySelector("#topicsContainer").closest(".card"));
   output.textContent = "Waiting for topic selection...";
   downloadBtn.classList.add("hidden");
+  hideSaveButtons();
 
   extractBtn.disabled = true;
   generateBtn.disabled = true;
@@ -725,6 +1051,8 @@ generateBtn.addEventListener("click", async () => {
     alert("Select at least one topic.");
     return;
   }
+
+  currentStudyKitTitle = makeStudyKitTitle(selectedTopics);
 
   const batchSize = 3;
   const topicBatches = chunkArray(selectedTopics, batchSize);
@@ -794,7 +1122,7 @@ downloadBtn.addEventListener("click", () => {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>StudyAI Study Guide</title>
+  <title>${currentStudyKitTitle}</title>
 
   <style>
     body {
@@ -940,7 +1268,7 @@ downloadBtn.addEventListener("click", () => {
 
 <body>
   <main>
-    <h1>StudyAI Study Guide</h1>
+    <h1>${currentStudyKitTitle}</h1>
     ${guideClone.innerHTML}
   </main>
 </body>
@@ -955,7 +1283,7 @@ downloadBtn.addEventListener("click", () => {
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = "StudyAI-Study-Guide.html";
+  link.download = `${sanitizeFileName(currentStudyKitTitle)}.html`;
   link.click();
 
   URL.revokeObjectURL(url);
@@ -1030,6 +1358,18 @@ savedFilesList.addEventListener("click", async (event) => {
   if (action === "load") {
     studyGuideInput.value = selectedFile.text;
     savedFilesModal.classList.add("hidden");
+  }
+
+  if (action === "open-study-kit") {
+    latestStudyGuide = selectedFile.data || { studyGuide: [] };
+    currentStudyKitTitle = selectedFile.title || "Saved Study Kit";
+    renderStudyGuide(latestStudyGuide);
+    savedFilesModal.classList.add("hidden");
+    scrollToElement(document.querySelector(".output-card"));
+  }
+
+  if (action === "open-flashcards") {
+    renderStandaloneFlashcards(selectedFile);
   }
 
   if (action === "open-pdf") {
@@ -1181,6 +1521,19 @@ readablePdfTextBtn.addEventListener("click", async () => {
     readablePdfTextBtn.disabled = false;
   }
 });
+
+
+if (saveStudyKitBtn) {
+  saveStudyKitBtn.addEventListener("click", () => {
+    saveCurrentStudyKit();
+  });
+}
+
+if (saveAllBtn) {
+  saveAllBtn.addEventListener("click", () => {
+    saveAllCurrentStudyMaterials();
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const welcomeOverlay = document.getElementById("welcomeOverlay");
