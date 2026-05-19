@@ -29,6 +29,14 @@ const closeSavedBtn = document.getElementById("closeSavedBtn");
 const textareaCoach = document.getElementById("textareaCoach");
 const closeCoachBtn = document.getElementById("closeCoachBtn");
 
+const pdfPreviewModal = document.getElementById("pdfPreviewModal");
+const pdfPreviewFrame = document.getElementById("pdfPreviewFrame");
+const closePdfPreviewBtn = document.getElementById("closePdfPreviewBtn");
+const useFullPdfTextBtn = document.getElementById("useFullPdfTextBtn");
+
+let currentPdfFile = null;
+let currentPdfUrl = null;
+
 const SAVED_FILES_KEY = "studyai_saved_materials";
 
 let extractedTopics = [];
@@ -438,87 +446,7 @@ function createChatBox(topic, topicIndex) {
     }
   }
 
-  uploadPdfBtn.addEventListener("click", () => {
-  pdfInput.click();
-});
-
-pdfInput.addEventListener("change", async () => {
-  const file = pdfInput.files[0];
-
-  if (!file) return;
-
-  studyGuideInput.value = "Reading PDF...";
-
-  try {
-    const text = await extractTextFromPdf(file);
-    studyGuideInput.value = text;
-  } catch (error) {
-    console.error(error);
-    studyGuideInput.value = "";
-    alert("Could not read that PDF.");
-  } finally {
-    pdfInput.value = "";
-  }
-});
-
-saveTextBtn.addEventListener("click", () => {
-  const text = studyGuideInput.value.trim();
-
-  if (!text) {
-    alert("Paste or upload something first.");
-    return;
-  }
-
-  const title = prompt("Name this saved material:");
-
-  if (!title) return;
-
-  const savedFiles = getSavedFiles();
-
-  savedFiles.unshift({
-    title,
-    text,
-    savedAt: new Date().toISOString()
-  });
-
-  saveFiles(savedFiles);
-
-  alert("Saved!");
-});
-
-openSavedBtn.addEventListener("click", () => {
-  renderSavedFiles();
-  savedFilesModal.classList.remove("hidden");
-});
-
-closeSavedBtn.addEventListener("click", () => {
-  savedFilesModal.classList.add("hidden");
-});
-
-savedFilesList.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-
-  if (!button) return;
-
-  const index = Number(button.dataset.index);
-  const action = button.dataset.action;
-  const savedFiles = getSavedFiles();
-
-  if (action === "load") {
-    studyGuideInput.value = savedFiles[index].text;
-    savedFilesModal.classList.add("hidden");
-  }
-
-  if (action === "delete") {
-    savedFiles.splice(index, 1);
-    saveFiles(savedFiles);
-    renderSavedFiles();
-  }
-});
-
-closeCoachBtn.addEventListener("click", () => {
-  textareaCoach.classList.add("hidden");
-});
+  
 
   button.addEventListener("click", askQuestion);
 
@@ -918,6 +846,113 @@ downloadBtn.addEventListener("click", () => {
   link.click();
 
   URL.revokeObjectURL(url);
+});
+
+uploadPdfBtn.addEventListener("click", () => {
+  pdfInput.click();
+});
+
+pdfInput.addEventListener("change", () => {
+  const file = pdfInput.files[0];
+
+  if (!file) return;
+
+  currentPdfFile = file;
+
+  if (currentPdfUrl) {
+    URL.revokeObjectURL(currentPdfUrl);
+  }
+
+  currentPdfUrl = URL.createObjectURL(file);
+  pdfPreviewFrame.src = currentPdfUrl;
+  pdfPreviewModal.classList.remove("hidden");
+
+  pdfInput.value = "";
+});
+
+saveTextBtn.addEventListener("click", () => {
+  const text = studyGuideInput.value.trim();
+
+  if (!text) {
+    alert("Paste or upload something first.");
+    return;
+  }
+
+  const title = prompt("Name this saved material:");
+
+  if (!title) return;
+
+  const savedFiles = getSavedFiles();
+
+  savedFiles.unshift({
+    title,
+    text,
+    savedAt: new Date().toISOString()
+  });
+
+  saveFiles(savedFiles);
+
+  alert("Saved!");
+});
+
+openSavedBtn.addEventListener("click", () => {
+  renderSavedFiles();
+  savedFilesModal.classList.remove("hidden");
+});
+
+closeSavedBtn.addEventListener("click", () => {
+  savedFilesModal.classList.add("hidden");
+});
+
+savedFilesList.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+
+  if (!button) return;
+
+  const index = Number(button.dataset.index);
+  const action = button.dataset.action;
+  const savedFiles = getSavedFiles();
+
+  if (action === "load") {
+    studyGuideInput.value = savedFiles[index].text;
+    savedFilesModal.classList.add("hidden");
+  }
+
+  if (action === "delete") {
+    savedFiles.splice(index, 1);
+    saveFiles(savedFiles);
+    renderSavedFiles();
+  }
+});
+
+closeCoachBtn.addEventListener("click", () => {
+  textareaCoach.classList.add("hidden");
+});
+
+closePdfPreviewBtn.addEventListener("click", () => {
+  pdfPreviewModal.classList.add("hidden");
+});
+
+useFullPdfTextBtn.addEventListener("click", async () => {
+  if (!currentPdfFile) {
+    alert("No PDF selected.");
+    return;
+  }
+
+  useFullPdfTextBtn.disabled = true;
+  useFullPdfTextBtn.textContent = "Reading PDF...";
+
+  try {
+    const text = await extractTextFromPdf(currentPdfFile);
+    studyGuideInput.value = text;
+    pdfPreviewModal.classList.add("hidden");
+  } catch (error) {
+    console.error(error);
+    alert("Could not read that PDF.");
+  } finally {
+    useFullPdfTextBtn.disabled = false;
+    useFullPdfTextBtn.textContent = "Use Full PDF Text";
+  }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
