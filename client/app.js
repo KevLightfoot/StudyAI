@@ -169,7 +169,7 @@ function createChatBox(topic, topicIndex) {
     try {
       const studyGuideText = studyGuideInput.value.trim();
 
-      const response = await fetch("http://studyai-backend-jmq5.onrender.com/api/ask-topic-question", {
+      const response = await fetch("https://studyai-backend-jmq5.onrender.com/api/ask-topic-question", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -375,7 +375,7 @@ generateBtn.addEventListener("click", async () => {
   generateBtn.disabled = true;
 
   try {
-    const response = await fetch("http://studyai-backend-jmq5.onrender.com/api/generate-study-kit", {
+    const response = await fetch("https://studyai-backend-jmq5.onrender.com/api/generate-study-kit", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
