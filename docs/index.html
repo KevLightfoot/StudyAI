@@ -79,19 +79,22 @@
   </div>
 
   <div id="pdfPreviewModal" class="pdf-modal hidden">
-    <div class="pdf-card">
-      <div class="pdf-header">
-        <h2>PDF Preview</h2>
-        <button id="closePdfPreviewBtn" type="button">Close</button>
-      </div>
+  <div class="pdf-card">
+    <div class="pdf-header">
+      <h2>PDF Preview</h2>
+      <button id="closePdfPreviewBtn" type="button">Close</button>
+    </div>
 
-      <iframe id="pdfPreviewFrame"></iframe>
+    <iframe id="pdfPreviewFrame"></iframe>
+    <div id="pdfReadableText" class="pdf-readable-text hidden"></div>
 
-      <div class="pdf-actions">
-        <button id="useFullPdfTextBtn" type="button">Use Full PDF Text</button>
-      </div>
+    <div class="pdf-actions">
+      <button id="useFullPdfTextBtn" type="button">Use Full PDF Text</button>
+      <button id="savePdfFileBtn" type="button">Save PDF File</button>
+      <button id="readablePdfTextBtn" type="button">Readable Text View</button>
     </div>
   </div>
+</div>
 
 
   <div id="welcomeOverlay" class="welcome-overlay">

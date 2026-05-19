@@ -667,3 +667,18 @@ button:disabled {
 .pdf-actions button {
   margin-top: 0;
 }
+
+.pdf-readable-text {
+  flex: 1;
+  background: white;
+  color: black;
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 16px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 1.55;
+  user-select: text;
+  -webkit-user-select: text;
+}

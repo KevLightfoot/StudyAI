@@ -21,10 +21,17 @@ const uploadPdfBtn = document.getElementById("uploadPdfBtn");
 const pdfInput = document.getElementById("pdfInput");
 const openSavedBtn = document.getElementById("openSavedBtn");
 const saveTextBtn = document.getElementById("saveTextBtn");
+const savePdfTextBtn = document.getElementById("savePdfTextBtn");
+const savePdfFileBtn = document.getElementById("savePdfFileBtn");
+const PDF_DB_NAME = "studyai_pdf_db";
+const PDF_STORE_NAME = "pdf_files";
 
 const savedFilesModal = document.getElementById("savedFilesModal");
 const savedFilesList = document.getElementById("savedFilesList");
 const closeSavedBtn = document.getElementById("closeSavedBtn");
+
+const readablePdfTextBtn = document.getElementById("readablePdfTextBtn");
+const pdfReadableText = document.getElementById("pdfReadableText");
 
 const textareaCoach = document.getElementById("textareaCoach");
 const closeCoachBtn = document.getElementById("closeCoachBtn");
@@ -69,6 +76,71 @@ function saveFiles(files) {
   localStorage.setItem(SAVED_FILES_KEY, JSON.stringify(files));
 }
 
+function openPdfDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PDF_DB_NAME, 1);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+
+      if (!db.objectStoreNames.contains(PDF_STORE_NAME)) {
+        db.createObjectStore(PDF_STORE_NAME, { keyPath: "id" });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function savePdfToIndexedDb(file) {
+  const db = await openPdfDb();
+
+  return new Promise((resolve, reject) => {
+    const id = crypto.randomUUID();
+
+    const transaction = db.transaction(PDF_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(PDF_STORE_NAME);
+
+    store.put({
+      id,
+      title: file.name,
+      savedAt: new Date().toISOString(),
+      blob: file
+    });
+
+    transaction.oncomplete = () => resolve(id);
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+async function getPdfFromIndexedDb(id) {
+  const db = await openPdfDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(PDF_STORE_NAME, "readonly");
+    const store = transaction.objectStore(PDF_STORE_NAME);
+    const request = store.get(id);
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function deletePdfFromIndexedDb(id) {
+  const db = await openPdfDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(PDF_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(PDF_STORE_NAME);
+
+    store.delete(id);
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
 function showCoachTip() {
   if (!textareaCoach) return;
 
@@ -81,6 +153,29 @@ function showCoachTip() {
   }, 3000);
 }
 
+function cleanPdfText(text) {
+  return text
+    // Fix words like "R e v i s e d"
+    .replace(/\b(?:[A-Za-z]\s){2,}[A-Za-z]\b/g, (match) =>
+      match.replace(/\s+/g, "")
+    )
+
+    // Fix spaced punctuation
+    .replace(/\s+([.,!?;:])/g, "$1")
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")")
+
+    // Fix missing spaces after periods before numbers/letters
+    .replace(/([.!?])(?=[A-Z0-9])/g, "$1 ")
+
+    // Fix common stuck-together words from PDFs
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+
+    // Collapse extra spaces
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 async function extractTextFromPdf(file) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -91,11 +186,15 @@ async function extractTextFromPdf(file) {
     const page = await pdf.getPage(pageNumber);
     const textContent = await page.getTextContent();
 
-    const pageText = textContent.items
-      .map((item) => item.str)
-      .join(" ");
+    let line = "";
 
-    fullText += `\n\n--- Page ${pageNumber} ---\n${pageText}`;
+    for (const item of textContent.items) {
+      line += item.str + " ";
+    }
+
+    const cleanedText = cleanPdfText(line);
+
+    fullText += `\n\n--- Page ${pageNumber} ---\n\n${cleanedText}`;
   }
 
   return fullText.trim();
@@ -115,13 +214,27 @@ function renderSavedFiles() {
     const div = document.createElement("div");
     div.className = "saved-item";
 
-    div.innerHTML = `
-      <h3>${file.title}</h3>
-      <p>${file.text.slice(0, 180)}...</p>
+    const previewText = file.type === "pdf"
+      ? "Saved PDF file"
+      : `${file.text.slice(0, 180)}...`;
 
-      <div class="saved-item-actions">
+    const buttons = file.type === "pdf"
+      ? `
+        <button type="button" data-action="open-pdf" data-index="${index}">Open PDF</button>
+        <button type="button" data-action="use-pdf-text" data-index="${index}">Use Full Text</button>
+        <button type="button" data-action="delete" data-index="${index}">Delete</button>
+      `
+      : `
         <button type="button" data-action="load" data-index="${index}">Load Into Textbox</button>
         <button type="button" data-action="delete" data-index="${index}">Delete</button>
+      `;
+
+    div.innerHTML = `
+      <h3>${file.title}</h3>
+      <p>${previewText}</p>
+
+      <div class="saved-item-actions">
+        ${buttons}
       </div>
     `;
 
@@ -904,7 +1017,7 @@ closeSavedBtn.addEventListener("click", () => {
   savedFilesModal.classList.add("hidden");
 });
 
-savedFilesList.addEventListener("click", (event) => {
+savedFilesList.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
 
   if (!button) return;
@@ -912,13 +1025,60 @@ savedFilesList.addEventListener("click", (event) => {
   const index = Number(button.dataset.index);
   const action = button.dataset.action;
   const savedFiles = getSavedFiles();
+  const selectedFile = savedFiles[index];
 
   if (action === "load") {
-    studyGuideInput.value = savedFiles[index].text;
+    studyGuideInput.value = selectedFile.text;
     savedFilesModal.classList.add("hidden");
   }
 
+  if (action === "open-pdf") {
+    const pdfRecord = await getPdfFromIndexedDb(selectedFile.id);
+
+    if (!pdfRecord) {
+      alert("Could not find saved PDF file.");
+      return;
+    }
+
+    currentPdfFile = pdfRecord.blob;
+
+    if (currentPdfUrl) {
+      URL.revokeObjectURL(currentPdfUrl);
+    }
+
+    currentPdfUrl = URL.createObjectURL(pdfRecord.blob);
+    pdfPreviewFrame.src = currentPdfUrl;
+
+    savedFilesModal.classList.add("hidden");
+    pdfPreviewModal.classList.remove("hidden");
+  }
+
+  if (action === "use-pdf-text") {
+    const pdfRecord = await getPdfFromIndexedDb(selectedFile.id);
+
+    if (!pdfRecord) {
+      alert("Could not find saved PDF file.");
+      return;
+    }
+
+    studyGuideInput.value = "Reading saved PDF...";
+
+    try {
+      const text = await extractTextFromPdf(pdfRecord.blob);
+      studyGuideInput.value = text;
+      savedFilesModal.classList.add("hidden");
+    } catch (error) {
+      console.error(error);
+      studyGuideInput.value = "";
+      alert("Could not read saved PDF.");
+    }
+  }
+
   if (action === "delete") {
+    if (selectedFile.type === "pdf") {
+      await deletePdfFromIndexedDb(selectedFile.id);
+    }
+
     savedFiles.splice(index, 1);
     saveFiles(savedFiles);
     renderSavedFiles();
@@ -952,6 +1112,73 @@ useFullPdfTextBtn.addEventListener("click", async () => {
   } finally {
     useFullPdfTextBtn.disabled = false;
     useFullPdfTextBtn.textContent = "Use Full PDF Text";
+  }
+});
+
+
+
+savePdfFileBtn.addEventListener("click", async () => {
+  if (!currentPdfFile) {
+    alert("No PDF selected.");
+    return;
+  }
+
+  savePdfFileBtn.disabled = true;
+  savePdfFileBtn.textContent = "Saving PDF...";
+
+  try {
+    const pdfId = await savePdfToIndexedDb(currentPdfFile);
+    const savedFiles = getSavedFiles();
+
+    savedFiles.unshift({
+      id: pdfId,
+      title: currentPdfFile.name,
+      type: "pdf",
+      savedAt: new Date().toISOString()
+    });
+
+    saveFiles(savedFiles);
+
+    alert("PDF file saved!");
+  } catch (error) {
+    console.error(error);
+    alert("Could not save PDF file.");
+  } finally {
+    savePdfFileBtn.disabled = false;
+    savePdfFileBtn.textContent = "Save PDF File";
+  }
+});
+
+readablePdfTextBtn.addEventListener("click", async () => {
+  if (!currentPdfFile) {
+    alert("No PDF selected.");
+    return;
+  }
+
+  if (!pdfReadableText.classList.contains("hidden")) {
+    pdfReadableText.classList.add("hidden");
+    pdfPreviewFrame.classList.remove("hidden");
+    readablePdfTextBtn.textContent = "Readable Text View";
+    return;
+  }
+
+  readablePdfTextBtn.disabled = true;
+  readablePdfTextBtn.textContent = "Reading PDF...";
+
+  try {
+    const text = await extractTextFromPdf(currentPdfFile);
+
+    pdfPreviewFrame.classList.add("hidden");
+    pdfReadableText.classList.remove("hidden");
+    pdfReadableText.textContent = text;
+
+    readablePdfTextBtn.textContent = "PDF Preview";
+  } catch (error) {
+    console.error(error);
+    alert("Could not read that PDF.");
+    readablePdfTextBtn.textContent = "Readable Text View";
+  } finally {
+    readablePdfTextBtn.disabled = false;
   }
 });
 
