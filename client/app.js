@@ -117,6 +117,8 @@ const pandaMessages = [
   "Pearls do not lie on the seashore. If you want one, you must dive for it."
 ];
 
+let pandaMessageIndex = 0;
+let pandaMessageTimer = null;
 let introMessageIndex = 0;
 let remainingPandaMessages = [];
 
@@ -127,7 +129,6 @@ function getReadTime(message) {
   return Math.min(Math.max(words * 420, 4000), 12000);
 }
 
-let remainingPandaMessages = [];
 
 function shuffleArray(array) {
   return [...array].sort(() => Math.random() - 0.5);
