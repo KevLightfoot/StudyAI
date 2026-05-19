@@ -1,3 +1,5 @@
+const API_BASE = "https://studyai-backend-jmq5.onrender.com";
+
 const extractBtn = document.getElementById("extractBtn");
 const generateBtn = document.getElementById("generateBtn");
 const downloadBtn = document.getElementById("downloadBtn");
@@ -9,7 +11,30 @@ const output = document.getElementById("output");
 const loadingPanda = document.getElementById("loadingPanda");
 const topicsLoadingPanda = document.getElementById("topicsLoadingPanda");
 
+const progressBar = document.getElementById("progressBar");
+const progressText = document.getElementById("progressText");
+
 let extractedTopics = [];
+let latestStudyGuide = {
+  studyGuide: []
+};
+
+function chunkArray(array, size) {
+  const chunks = [];
+
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+
+  return chunks;
+}
+
+function updateProgress(completed, total) {
+  const percent = Math.round((completed / total) * 100);
+
+  progressBar.style.width = `${percent}%`;
+  progressText.textContent = `Completed ${completed} of ${total} topics...`;
+}
 
 function showTopicsPanda() {
   topicsContainer.textContent = "";
@@ -20,9 +45,13 @@ function hideTopicsPanda() {
   topicsLoadingPanda.classList.add("hidden");
 }
 
-function showStudyGuidePanda(message) {
+function showStudyGuidePanda(message, totalTopics) {
   output.textContent = "";
   downloadBtn.classList.add("hidden");
+
+  progressBar.style.width = "0%";
+  progressText.textContent = `Preparing ${totalTopics} topics...`;
+
   loadingPanda.querySelector("p").textContent = message;
   loadingPanda.classList.remove("hidden");
 }
@@ -169,7 +198,7 @@ function createChatBox(topic, topicIndex) {
     try {
       const studyGuideText = studyGuideInput.value.trim();
 
-      const response = await fetch("https://studyai-backend-jmq5.onrender.com/api/ask-topic-question", {
+      const response = await fetch(`${API_BASE}/api/ask-topic-question`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -331,7 +360,7 @@ extractBtn.addEventListener("click", async () => {
   generateBtn.disabled = true;
 
   try {
-    const response = await fetch("https://studyai-backend-jmq5.onrender.com/api/extract-topics", {
+    const response = await fetch(`${API_BASE}/api/extract-topics`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -370,30 +399,48 @@ generateBtn.addEventListener("click", async () => {
     return;
   }
 
-  showStudyGuidePanda("StudyAI is building your study guide...");
+  const batchSize = 3;
+  const topicBatches = chunkArray(selectedTopics, batchSize);
+
+  latestStudyGuide = {
+    studyGuide: []
+  };
+
+  showStudyGuidePanda("StudyAI is building your study guide...", selectedTopics.length);
 
   generateBtn.disabled = true;
 
   try {
-    const response = await fetch("https://studyai-backend-jmq5.onrender.com/api/generate-study-kit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        studyGuideText,
-        topics: selectedTopics
-      })
-    });
+    let completedTopics = 0;
 
-    const data = await response.json();
+    for (const batch of topicBatches) {
+      progressText.textContent = `Generating topics ${completedTopics + 1}-${completedTopics + batch.length} of ${selectedTopics.length}...`;
 
-    if (!response.ok) {
-      throw new Error(data.error || "Study guide generation failed.");
+      const response = await fetch(`${API_BASE}/api/generate-topic-batch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          studyGuideText,
+          topics: batch
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Study guide batch generation failed.");
+      }
+
+      latestStudyGuide.studyGuide.push(...(data.studyGuide || []));
+
+      completedTopics += batch.length;
+      updateProgress(completedTopics, selectedTopics.length);
     }
 
     hideStudyGuidePanda();
-    renderStudyGuide(data);
+    renderStudyGuide(latestStudyGuide);
   } catch (error) {
     console.error(error);
     hideStudyGuidePanda();

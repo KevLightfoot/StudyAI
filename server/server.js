@@ -29,9 +29,7 @@ app.post("/api/extract-topics", async (req, res) => {
     const { studyGuideText } = req.body;
 
     if (!studyGuideText) {
-      return res.status(400).json({
-        error: "Missing study guide text."
-      });
+      return res.status(400).json({ error: "Missing study guide text." });
     }
 
     const prompt = `
@@ -77,7 +75,7 @@ ${studyGuideText}
   }
 });
 
-app.post("/api/generate-study-kit", async (req, res) => {
+app.post("/api/generate-topic-batch", async (req, res) => {
   try {
     const { topics, studyGuideText } = req.body;
 
@@ -87,12 +85,10 @@ app.post("/api/generate-study-kit", async (req, res) => {
       });
     }
 
-    const topicList = topics.map(topic => `- ${topic}`).join("\n");
+    const topicList = topics.map((topic) => `- ${topic}`).join("\n");
 
     const prompt = `
 You are StudyAI.
-
-You are NOT writing generic textbook notes.
 
 You are creating highly effective study material for difficult college classes like:
 - Anatomy & Physiology
@@ -101,7 +97,10 @@ You are creating highly effective study material for difficult college classes l
 - Chemistry
 
 Your goal:
-Help students ACTUALLY remember and understand concepts for exams.
+Help students actually remember and understand concepts for exams.
+
+Generate study material ONLY for these topics:
+${topicList}
 
 For EACH topic, generate:
 
@@ -138,6 +137,8 @@ For EACH topic, generate:
 - Night-before-exam style
 
 Return ONLY valid JSON.
+No markdown.
+No code fences.
 
 Format exactly:
 
@@ -199,9 +200,6 @@ Format exactly:
   ]
 }
 
-Selected topics:
-${topicList}
-
 Original material:
 ${studyGuideText}
 `;
@@ -211,7 +209,7 @@ ${studyGuideText}
       input: prompt
     });
 
-    console.log("STUDY GUIDE GENERATION USAGE:");
+    console.log("TOPIC BATCH GENERATION USAGE:");
     console.log(response.usage);
 
     const parsed = parseJsonFromModel(response.output_text);
@@ -221,7 +219,7 @@ ${studyGuideText}
     console.error(error);
 
     res.status(500).json({
-      error: "Something went wrong generating the study kit."
+      error: "Something went wrong generating this topic batch."
     });
   }
 });
