@@ -756,6 +756,13 @@ downloadBtn.addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
-closeWelcomeBtn.addEventListener("click", () => {
-  welcomeOverlay.classList.add("hidden");
+document.addEventListener("DOMContentLoaded", () => {
+  const welcomeOverlay = document.getElementById("welcomeOverlay");
+  const closeWelcomeBtn = document.getElementById("closeWelcomeBtn");
+
+  if (closeWelcomeBtn && welcomeOverlay) {
+    closeWelcomeBtn.addEventListener("click", () => {
+      welcomeOverlay.classList.add("hidden");
+    });
+  }
 });
