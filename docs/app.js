@@ -1,5 +1,8 @@
 const API_BASE = "https://studyai-backend-jmq5.onrender.com";
 
+const welcomeOverlay = document.getElementById("welcomeOverlay");
+const closeWelcomeBtn = document.getElementById("closeWelcomeBtn");
+
 const extractBtn = document.getElementById("extractBtn");
 const generateBtn = document.getElementById("generateBtn");
 const downloadBtn = document.getElementById("downloadBtn");
@@ -751,4 +754,8 @@ downloadBtn.addEventListener("click", () => {
   link.click();
 
   URL.revokeObjectURL(url);
+});
+
+closeWelcomeBtn.addEventListener("click", () => {
+  welcomeOverlay.classList.add("hidden");
 });
