@@ -92,6 +92,69 @@ function renderTopics(topics) {
   generateBtn.disabled = false;
 }
 
+let pandaMessageIndex = 0;
+let pandaMessageTimer = null;
+
+const pandaMessages = [
+  "sorry we are slow, our papa is impoverished",
+  "yes, he has to use a free web host cause he has no moneys",
+  "Well, while we wait how about some old Chinese proverbs?",
+  "Patience is a tree with bitter roots that bears sweet fruits.",
+  "A great man is hard on himself. A small man is hard on others. – Confucius",
+  "A tiger does not take insults from sheep.",
+  "There is no victory in winning a hundred battles. There is victory in subduing your enemy without fighting at all. – Sun Zi"
+];
+
+const pandaPositions = ["top", "right", "bottom", "left"];
+
+function getReadTime(message) {
+  const words = message.split(" ").length;
+  return Math.min(Math.max(words * 420, 4000), 12000);
+}
+
+function showPandaPopout() {
+  const oldPopout = document.querySelector(".panda-popout");
+
+  if (oldPopout) {
+    oldPopout.remove();
+  }
+
+  const message = pandaMessages[pandaMessageIndex % pandaMessages.length];
+  const position = pandaPositions[pandaMessageIndex % pandaPositions.length];
+
+  const popout = document.createElement("div");
+  popout.className = `panda-popout ${position}`;
+
+  popout.innerHTML = `
+    <img src="assets/panda_thinking.gif" alt="Panda">
+    <div class="panda-speech">${message}</div>
+  `;
+
+  loadingPanda.appendChild(popout);
+
+  pandaMessageIndex++;
+
+  pandaMessageTimer = setTimeout(() => {
+    showPandaPopout();
+  }, getReadTime(message));
+}
+
+function startPandaMessages() {
+  stopPandaMessages();
+  pandaMessageIndex = 0;
+  showPandaPopout();
+}
+
+function stopPandaMessages() {
+  clearTimeout(pandaMessageTimer);
+
+  const oldPopout = document.querySelector(".panda-popout");
+
+  if (oldPopout) {
+    oldPopout.remove();
+  }
+}
+
 function makeList(items) {
   if (!items || items.length === 0) {
     return `<p class="empty-text">Nothing generated for this section.</p>`;
@@ -407,6 +470,7 @@ generateBtn.addEventListener("click", async () => {
   };
 
   showStudyGuidePanda("StudyAI is building your study guide...", selectedTopics.length);
+  startPandaMessages();
 
   generateBtn.disabled = true;
 
@@ -439,10 +503,12 @@ generateBtn.addEventListener("click", async () => {
       updateProgress(completedTopics, selectedTopics.length);
     }
 
+    stopPandaMessages();
     hideStudyGuidePanda();
     renderStudyGuide(latestStudyGuide);
   } catch (error) {
     console.error(error);
+    stopPandaMessages();
     hideStudyGuidePanda();
     output.textContent = "Something went wrong generating the study guide.";
   } finally {
