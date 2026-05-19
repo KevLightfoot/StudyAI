@@ -179,7 +179,7 @@ function showPandaPopout() {
   popout.className = `panda-popout ${position}`;
 
   popout.innerHTML = `
-    <img src="assets/panda_head.png" alt="Panda">
+    <img src="assets/wise_panda.gif" alt="Panda">
     <div class="panda-speech">${message}</div>
   `;
 
