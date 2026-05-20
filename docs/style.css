@@ -780,3 +780,67 @@ button:disabled {
   font-size: 13px;
   color: #64748b !important;
 }
+
+
+.saved-resources-card {
+  border: 1px solid #334155;
+}
+
+.saved-resources-helper {
+  margin-top: -6px;
+  margin-bottom: 18px;
+  color: #94a3b8;
+}
+
+#savedResourcesList {
+  display: grid;
+  gap: 14px;
+}
+
+.saved-resource-item {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.saved-resource-item h3 {
+  margin: 0 0 8px;
+  color: #f8fafc;
+}
+
+.saved-resource-item p {
+  margin: 0 0 6px;
+}
+
+.saved-resource-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.saved-resource-actions button {
+  margin-top: 0;
+}
+
+.saved-resource-actions button[data-action="delete"] {
+  background: #7f1d1d;
+  color: #fee2e2;
+}
+
+.saved-resource-actions button[data-action="delete"]:hover {
+  background: #991b1b;
+}
+
+@media (min-width: 760px) {
+  .saved-resource-item {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .saved-resource-actions {
+    justify-content: flex-end;
+  }
+}

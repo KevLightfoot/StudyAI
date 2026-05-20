@@ -13,7 +13,7 @@
       <p>Paste a study guide or topic list. StudyAI will extract topics, let you choose what matters, then build a real study guide.</p>
     </header>
 
-    <section class="card">
+    <section id="inputCard" class="card">
       <h2>1. Paste Study Material</h2>
       <textarea id="studyGuideInput" placeholder="Paste your study guide, objectives, notes, or topic list here..."></textarea>
       
@@ -29,7 +29,7 @@
         <img src="assets/pointing_panda.png" alt="Panda">
         <div>
           <button id="closeCoachBtn" type="button">×</button>
-          <p>You can add files here or view your saved ones.</p>
+          <p>Paste from clipoard, add a file, or view your saved ones.</p>
         </div>
       </div>
       <div class="extract-wrapper">
@@ -37,7 +37,7 @@
       </div>    
     </section>
 
-    <section class="card">
+    <section id="topicsCard" class="card hidden">
       <h2>2. Choose Topics</h2>
 
       <div id="topicsContainer">Extracted topics will appear here.</div>
@@ -50,7 +50,7 @@
       <button id="generateBtn" disabled>Generate Study Kit</button>
     </section>
 
-    <section class="card output-card">
+    <section id="outputCard" class="card output-card hidden">
       <h2>3. Generated Study Kit</h2>
 
       <div id="loadingPanda" class="hidden">
@@ -71,6 +71,12 @@
       </div>
 
       <div id="output">Your result will appear here.</div>
+    </section>
+
+    <section id="savedResourcesCard" class="card saved-resources-card hidden">
+      <h2>Saved Resources</h2>
+      <p class="saved-resources-helper">Open saved study kits, flashcards, PDFs, or text without regenerating.</p>
+      <div id="savedResourcesList"></div>
     </section>
   </main>
 

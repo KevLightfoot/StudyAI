@@ -13,6 +13,11 @@ const studyGuideInput = document.getElementById("studyGuideInput");
 const topicsContainer = document.getElementById("topicsContainer");
 const output = document.getElementById("output");
 
+const topicsCard = document.getElementById("topicsCard");
+const outputCard = document.getElementById("outputCard");
+const savedResourcesCard = document.getElementById("savedResourcesCard");
+const savedResourcesList = document.getElementById("savedResourcesList");
+
 const loadingPanda = document.getElementById("loadingPanda");
 const topicsLoadingPanda = document.getElementById("topicsLoadingPanda");
 
@@ -77,6 +82,137 @@ function getSavedFiles() {
 
 function saveFiles(files) {
   localStorage.setItem(SAVED_FILES_KEY, JSON.stringify(files));
+  renderSavedResources();
+}
+
+function showTopicsCard() {
+  if (topicsCard) {
+    topicsCard.classList.remove("hidden");
+  }
+}
+
+function showOutputCard() {
+  if (outputCard) {
+    outputCard.classList.remove("hidden");
+  }
+}
+
+function hideOutputCard() {
+  if (outputCard) {
+    outputCard.classList.add("hidden");
+  }
+}
+
+function getSavedResourceLabel(item) {
+  if (item.type === "study-kit" || item.type === "study-kit-bundle") {
+    const topicCount = item.data?.studyGuide?.length || 0;
+    const flashcardCount = item.flashcardSets?.reduce((sum, set) => sum + set.flashcards.length, 0) || 0;
+    return `${topicCount} topics${flashcardCount ? ` • ${flashcardCount} flashcards` : ""}`;
+  }
+
+  if (item.type === "flashcards") {
+    return `${item.flashcards?.length || 0} flashcards${item.topicTitle ? ` • ${item.topicTitle}` : ""}`;
+  }
+
+  if (item.type === "pdf") {
+    return "Saved PDF file";
+  }
+
+  return `${item.text?.slice(0, 120) || "Saved text"}...`;
+}
+
+function getSavedResourceButtons(item, index) {
+  if (item.type === "study-kit" || item.type === "study-kit-bundle") {
+    return `
+      <button type="button" data-action="open-study-kit" data-index="${index}">Open Study Kit</button>
+      <button type="button" data-action="delete" data-index="${index}">Delete</button>
+    `;
+  }
+
+  if (item.type === "flashcards") {
+    return `
+      <button type="button" data-action="open-flashcards" data-index="${index}">Open Flashcards</button>
+      <button type="button" data-action="delete" data-index="${index}">Delete</button>
+    `;
+  }
+
+  if (item.type === "pdf") {
+    return `
+      <button type="button" data-action="open-pdf" data-index="${index}">Open PDF</button>
+      <button type="button" data-action="use-pdf-text" data-index="${index}">Use Full Text</button>
+      <button type="button" data-action="delete" data-index="${index}">Delete</button>
+    `;
+  }
+
+  return `
+    <button type="button" data-action="load" data-index="${index}">Load Into Textbox</button>
+    <button type="button" data-action="delete" data-index="${index}">Delete</button>
+  `;
+}
+
+function renderSavedResources() {
+  if (!savedResourcesCard || !savedResourcesList) {
+    return;
+  }
+
+  const savedFiles = getSavedFiles();
+
+  const filteredFiles = savedFiles.filter(
+    item =>
+      item.type === "study-kit" ||
+      item.type === "study-kit-bundle" ||
+      item.type === "flashcards"
+  );
+
+  if (filteredFiles.length === 0) {
+    savedResourcesCard.classList.add("hidden");
+    savedResourcesList.innerHTML = "";
+    return;
+  }
+
+  savedResourcesCard.classList.remove("hidden");
+
+  savedResourcesList.innerHTML = filteredFiles
+    .map(
+      (file) => `
+        <div class="saved-resource-card">
+          <h3>${file.title || "Untitled Resource"}</h3>
+
+          <p>
+            ${
+              file.type === "flashcards"
+                ? "Saved flashcards"
+                : "Saved study kit"
+            }
+          </p>
+
+          <small>
+            Saved: ${new Date(file.savedAt).toLocaleString()}
+          </small>
+
+          <div class="saved-resource-actions">
+            <button
+              class="primary-btn open-resource-btn"
+              data-id="${file.id}"
+            >
+              ${
+                file.type === "flashcards"
+                  ? "Open Flashcards"
+                  : "Open Study Kit"
+              }
+            </button>
+
+            <button
+              class="danger-btn delete-resource-btn"
+              data-id="${file.id}"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      `
+    )
+    .join("");
 }
 
 
@@ -359,6 +495,12 @@ async function extractTextFromPdf(file) {
 
 function renderSavedFiles() {
   const savedFiles = getSavedFiles();
+  const utilityFiles = savedFiles.filter(
+    file =>
+      file.type === "pdf" ||
+      (!file.type ||
+        file.type === "text")
+  );
 
   savedFilesList.innerHTML = "";
 
@@ -367,7 +509,7 @@ function renderSavedFiles() {
     return;
   }
 
-  savedFiles.forEach((file, index) => {
+  utilityFiles.forEach((file, index) => {
     const div = document.createElement("div");
     div.className = "saved-item";
 
@@ -382,16 +524,13 @@ function renderSavedFiles() {
         <button type="button" data-action="delete" data-index="${index}">Delete</button>
       `;
     } else if (file.type === "study-kit" || file.type === "study-kit-bundle") {
-      const topicCount = file.data?.studyGuide?.length || 0;
-      const flashcardCount = file.flashcardSets?.reduce((sum, set) => sum + set.flashcards.length, 0) || 0;
-
-      previewText = `${topicCount} topics${flashcardCount ? ` • ${flashcardCount} flashcards` : ""}`;
+      previewText = `${file.data?.studyGuide?.length || 0} topics`;
       buttons = `
         <button type="button" data-action="open-study-kit" data-index="${index}">Open Study Kit</button>
         <button type="button" data-action="delete" data-index="${index}">Delete</button>
       `;
     } else if (file.type === "flashcards") {
-      previewText = `${file.flashcards?.length || 0} flashcards for ${file.topicTitle || "a topic"}`;
+      previewText = `${file.flashcards?.length || 0} flashcards`;
       buttons = `
         <button type="button" data-action="open-flashcards" data-index="${index}">Open Flashcards</button>
         <button type="button" data-action="delete" data-index="${index}">Delete</button>
@@ -404,18 +543,11 @@ function renderSavedFiles() {
       `;
     }
 
-    const savedDate = file.savedAt
-      ? new Date(file.savedAt).toLocaleString()
-      : "Unknown date";
-
     div.innerHTML = `
-      <h3>${file.title}</h3>
+      <h3>${file.title || "Untitled"}</h3>
       <p>${previewText}</p>
-      <p class="saved-date">Saved: ${savedDate}</p>
-
-      <div class="saved-item-actions">
-        ${buttons}
-      </div>
+      <p class="saved-date">Saved: ${new Date(file.savedAt).toLocaleString()}</p>
+      <div class="saved-item-actions">${buttons}</div>
     `;
 
     savedFilesList.appendChild(div);
@@ -755,6 +887,7 @@ function createFlashcardBox(topic, topicIndex) {
 }
 
 function renderStandaloneFlashcards(savedItem) {
+  showOutputCard();
   output.innerHTML = "";
 
   currentStudyKitTitle = savedItem.title || "Saved Flashcards";
@@ -788,7 +921,7 @@ function renderStandaloneFlashcards(savedItem) {
   downloadBtn.classList.add("hidden");
   hideSaveButtons();
   savedFilesModal.classList.add("hidden");
-  scrollToElement(document.querySelector(".output-card"));
+  scrollToElement(outputCard || document.querySelector(".output-card"));
 }
 
 function createChatBox(topic, topicIndex) {
@@ -894,6 +1027,7 @@ function createChatBox(topic, topicIndex) {
 }
 
 function renderStudyGuide(data) {
+  showOutputCard();
   output.innerHTML = "";
 
   if (!data.studyGuide || data.studyGuide.length === 0) {
@@ -1003,8 +1137,10 @@ extractBtn.addEventListener("click", async () => {
     return;
   }
 
+  showTopicsCard();
+  hideOutputCard();
   showTopicsPanda();
-  scrollToElement(document.querySelector("#topicsContainer").closest(".card"));
+  scrollToElement(topicsCard || document.querySelector("#topicsContainer").closest(".card"));
   output.textContent = "Waiting for topic selection...";
   downloadBtn.classList.add("hidden");
   hideSaveButtons();
@@ -1061,8 +1197,9 @@ generateBtn.addEventListener("click", async () => {
     studyGuide: []
   };
 
+  showOutputCard();
   showStudyGuidePanda("StudyAI is building your study guide...", selectedTopics.length);
-  scrollToElement(document.querySelector(".output-card"));
+  scrollToElement(outputCard || document.querySelector(".output-card"));
   startPandaMessages();
 
   generateBtn.disabled = true;
@@ -1098,7 +1235,7 @@ generateBtn.addEventListener("click", async () => {
 
     stopPandaMessages();
     hideStudyGuidePanda();
-    scrollToElement(document.querySelector(".output-card"));
+    scrollToElement(outputCard || document.querySelector(".output-card"));
     renderStudyGuide(latestStudyGuide);
   } catch (error) {
     console.error(error);
@@ -1345,31 +1482,36 @@ closeSavedBtn.addEventListener("click", () => {
   savedFilesModal.classList.add("hidden");
 });
 
-savedFilesList.addEventListener("click", async (event) => {
-  const button = event.target.closest("button");
-
-  if (!button) return;
-
-  const index = Number(button.dataset.index);
-  const action = button.dataset.action;
+async function handleSavedResourceAction(action, index) {
   const savedFiles = getSavedFiles();
   const selectedFile = savedFiles[index];
 
+  if (!selectedFile) {
+    alert("Could not find that saved item.");
+    return;
+  }
+
   if (action === "load") {
-    studyGuideInput.value = selectedFile.text;
+    studyGuideInput.value = selectedFile.text || "";
     savedFilesModal.classList.add("hidden");
+    scrollToElement(document.querySelector("#inputCard") || document.querySelector(".card"));
   }
 
   if (action === "open-study-kit") {
     latestStudyGuide = selectedFile.data || { studyGuide: [] };
     currentStudyKitTitle = selectedFile.title || "Saved Study Kit";
+
+    showOutputCard();
     renderStudyGuide(latestStudyGuide);
+
     savedFilesModal.classList.add("hidden");
-    scrollToElement(document.querySelector(".output-card"));
+    scrollToElement(outputCard || document.querySelector(".output-card"));
   }
 
   if (action === "open-flashcards") {
+    showOutputCard();
     renderStandaloneFlashcards(selectedFile);
+    savedFilesModal.classList.add("hidden");
   }
 
   if (action === "open-pdf") {
@@ -1389,6 +1531,10 @@ savedFilesList.addEventListener("click", async (event) => {
     currentPdfUrl = URL.createObjectURL(pdfRecord.blob);
     pdfPreviewFrame.src = currentPdfUrl;
 
+    pdfReadableText.classList.add("hidden");
+    pdfPreviewFrame.classList.remove("hidden");
+    readablePdfTextBtn.textContent = "Readable Text View";
+
     savedFilesModal.classList.add("hidden");
     pdfPreviewModal.classList.remove("hidden");
   }
@@ -1402,11 +1548,12 @@ savedFilesList.addEventListener("click", async (event) => {
     }
 
     studyGuideInput.value = "Reading saved PDF...";
+    savedFilesModal.classList.add("hidden");
+    scrollToElement(document.querySelector("#inputCard") || document.querySelector(".card"));
 
     try {
       const text = await extractTextFromPdf(pdfRecord.blob);
       studyGuideInput.value = text;
-      savedFilesModal.classList.add("hidden");
     } catch (error) {
       console.error(error);
       studyGuideInput.value = "";
@@ -1422,8 +1569,61 @@ savedFilesList.addEventListener("click", async (event) => {
     savedFiles.splice(index, 1);
     saveFiles(savedFiles);
     renderSavedFiles();
+    renderSavedResources();
+  }
+}
+
+savedFilesList.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+
+  if (!button) return;
+
+  const index = Number(button.dataset.index);
+  const action = button.dataset.action;
+
+  await handleSavedResourceAction(action, index);
+});
+
+if (savedResourcesList) {
+
+  savedResourcesList.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  const id = button.dataset.id;
+  const action = button.classList.contains("delete-resource-btn")
+    ? "delete"
+    : "open";
+
+  const savedFiles = getSavedFiles();
+  const selectedFile = savedFiles.find((item) => item.id === id);
+
+  if (!selectedFile) return;
+
+  if (action === "open") {
+    if (selectedFile.type === "study-kit" || selectedFile.type === "study-kit-bundle") {
+      latestStudyGuide = selectedFile.data || { studyGuide: [] };
+      currentStudyKitTitle = selectedFile.title || "Saved Study Kit";
+      showOutputCard();
+      renderStudyGuide(latestStudyGuide);
+      scrollToElement(outputCard);
+    }
+
+    if (selectedFile.type === "flashcards") {
+      showOutputCard();
+      renderStandaloneFlashcards(selectedFile);
+      scrollToElement(outputCard);
+    }
+  }
+
+  if (action === "delete") {
+    saveFiles(savedFiles.filter((item) => item.id !== id));
+    renderSavedResources();
   }
 });
+
+
+}
 
 closeCoachBtn.addEventListener("click", () => {
   textareaCoach.classList.add("hidden");
@@ -1534,6 +1734,8 @@ if (saveAllBtn) {
     saveAllCurrentStudyMaterials();
   });
 }
+
+renderSavedResources();
 
 document.addEventListener("DOMContentLoaded", () => {
   const welcomeOverlay = document.getElementById("welcomeOverlay");
