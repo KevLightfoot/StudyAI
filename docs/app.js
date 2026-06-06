@@ -784,6 +784,171 @@ function makeRecallCards(activeRecall) {
 }
 
 
+
+
+// Flashcard speech controls
+let activeFlashcardSpeech = {
+  button: null,
+  details: null,
+  timers: [],
+  phase: "idle"
+};
+
+function clearFlashcardSpeechTimers() {
+  activeFlashcardSpeech.timers.forEach((timer) => clearTimeout(timer));
+  activeFlashcardSpeech.timers = [];
+}
+
+function resetFlashcardSpeechButton(button) {
+  if (!button) return;
+  button.innerHTML = "&#128266;";
+  button.title = "Read flashcard aloud";
+  button.setAttribute("aria-label", "Read flashcard aloud");
+  button.dataset.speechState = "idle";
+}
+
+function setFlashcardSpeechButton(button, state) {
+  if (!button) return;
+
+  if (state === "speaking") {
+    button.innerHTML = "&#10074;&#10074;";
+    button.title = "Pause flashcard audio";
+    button.setAttribute("aria-label", "Pause flashcard audio");
+    button.dataset.speechState = "speaking";
+    return;
+  }
+
+  if (state === "paused") {
+    button.innerHTML = "&#9654;";
+    button.title = "Resume flashcard audio";
+    button.setAttribute("aria-label", "Resume flashcard audio");
+    button.dataset.speechState = "paused";
+    return;
+  }
+
+  resetFlashcardSpeechButton(button);
+}
+
+function stopFlashcardSpeech() {
+  clearFlashcardSpeechTimers();
+  window.speechSynthesis.cancel();
+  resetFlashcardSpeechButton(activeFlashcardSpeech.button);
+
+  activeFlashcardSpeech = {
+    button: null,
+    details: null,
+    timers: [],
+    phase: "idle"
+  };
+}
+
+function cleanTextForSpeech(text) {
+  return String(text || "")
+    .replace(/â†’/g, " then ")
+    .replace(/â€“|â€”/g, "-")
+    .replace(/â€™/g, "'")
+    .replace(/â€œ|â€/g, '"')
+    .replace(/â€¢/g, "")
+    .replace(/[→➜➡]/g, " then ")
+    .replace(/[•]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getBestStudyVoice() {
+  const voices = window.speechSynthesis.getVoices();
+
+  return voices.find((voice) => /Jenny|Aria|Natural|Samantha|Google US English/i.test(voice.name)) ||
+    voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith("en")) ||
+    null;
+}
+
+function speakFlashcardText(text, onEnd) {
+  const cleanedText = cleanTextForSpeech(text);
+
+  if (!cleanedText) {
+    if (onEnd) onEnd();
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(cleanedText);
+  const voice = getBestStudyVoice();
+
+  if (voice) {
+    utterance.voice = voice;
+  }
+
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  utterance.onend = () => {
+    if (onEnd) onEnd();
+  };
+  utterance.onerror = () => {
+    if (onEnd) onEnd();
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function startFlashcardSpeech(card, details, button) {
+  stopFlashcardSpeech();
+
+  activeFlashcardSpeech.button = button;
+  activeFlashcardSpeech.details = details;
+  activeFlashcardSpeech.phase = "question";
+
+  setFlashcardSpeechButton(button, "speaking");
+
+  speakFlashcardText(card.front, () => {
+    if (activeFlashcardSpeech.button !== button) return;
+
+    activeFlashcardSpeech.phase = "waiting";
+
+    const timer = setTimeout(() => {
+      if (activeFlashcardSpeech.button !== button) return;
+
+      details.open = true;
+      activeFlashcardSpeech.phase = "answer";
+      setFlashcardSpeechButton(button, "speaking");
+
+      speakFlashcardText(card.back, () => {
+        if (activeFlashcardSpeech.button !== button) return;
+        resetFlashcardSpeechButton(button);
+        activeFlashcardSpeech = {
+          button: null,
+          details: null,
+          timers: [],
+          phase: "idle"
+        };
+      });
+    }, 4000);
+
+    activeFlashcardSpeech.timers.push(timer);
+  });
+}
+
+function toggleFlashcardSpeech(card, details, button, event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const state = button.dataset.speechState || "idle";
+
+  if (activeFlashcardSpeech.button === button && state === "speaking") {
+    window.speechSynthesis.pause();
+    setFlashcardSpeechButton(button, "paused");
+    return;
+  }
+
+  if (activeFlashcardSpeech.button === button && state === "paused") {
+    window.speechSynthesis.resume();
+    setFlashcardSpeechButton(button, "speaking");
+    return;
+  }
+
+  startFlashcardSpeech(card, details, button);
+}
+
 function renderFlashcards(topic, container) {
   const cards = topic.flashcards || [];
 
@@ -795,16 +960,34 @@ function renderFlashcards(topic, container) {
   container.innerHTML = `
     <div class="flashcard-grid">
       ${cards.map((card, index) => `
-        <details class="flashcard">
+        <details class="flashcard" data-flashcard-index="${index}">
           <summary>
             <span>Card ${index + 1}</span>
             <strong>${card.front}</strong>
+            <button
+              type="button"
+              class="flashcard-speech-btn"
+              data-flashcard-speech-index="${index}"
+              aria-label="Read flashcard aloud"
+              title="Read flashcard aloud"
+            >&#128266;</button>
           </summary>
           <p>${card.back}</p>
         </details>
       `).join("")}
     </div>
   `;
+
+  container.querySelectorAll(".flashcard-speech-btn").forEach((speechButton) => {
+    speechButton.addEventListener("click", (event) => {
+      const index = Number(speechButton.dataset.flashcardSpeechIndex);
+      const card = cards[index];
+      const details = speechButton.closest("details.flashcard");
+
+      if (!card || !details) return;
+      toggleFlashcardSpeech(card, details, speechButton, event);
+    });
+  });
 }
 
 async function generateFlashcardsForTopic(topic, button, container) {
@@ -904,10 +1087,17 @@ function renderStandaloneFlashcards(savedItem) {
         <p>${savedItem.topicTitle ? `Topic: ${savedItem.topicTitle}` : ""}</p>
         <div class="flashcard-grid">
           ${(savedItem.flashcards || []).map((card, index) => `
-            <details class="flashcard">
+            <details class="flashcard" data-flashcard-index="${index}">
               <summary>
                 <span>Card ${index + 1}</span>
                 <strong>${card.front}</strong>
+                <button
+                  type="button"
+                  class="flashcard-speech-btn"
+                  data-flashcard-speech-index="${index}"
+                  aria-label="Read flashcard aloud"
+                  title="Read flashcard aloud"
+                >&#128266;</button>
               </summary>
               <p>${card.back}</p>
             </details>
@@ -918,6 +1108,19 @@ function renderStandaloneFlashcards(savedItem) {
   `;
 
   output.appendChild(wrapper);
+
+  const cards = savedItem.flashcards || [];
+  wrapper.querySelectorAll(".flashcard-speech-btn").forEach((speechButton) => {
+    speechButton.addEventListener("click", (event) => {
+      const index = Number(speechButton.dataset.flashcardSpeechIndex);
+      const card = cards[index];
+      const details = speechButton.closest("details.flashcard");
+
+      if (!card || !details) return;
+      toggleFlashcardSpeech(card, details, speechButton, event);
+    });
+  });
+
   downloadBtn.classList.add("hidden");
   hideSaveButtons();
   savedFilesModal.classList.add("hidden");

@@ -844,3 +844,41 @@ button:disabled {
     justify-content: flex-end;
   }
 }
+
+
+.flashcard summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.flashcard summary strong {
+  flex: 1;
+}
+
+.flashcard-speech-btn {
+  margin-top: 0;
+  margin-left: auto;
+  min-width: 44px;
+  height: 40px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #334155;
+  color: #f8fafc;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.flashcard-speech-btn:hover {
+  background: #475569;
+}
+
+.flashcard-speech-btn[data-speech-state="speaking"] {
+  background: #f59e0b;
+  color: #020617;
+}
+
+.flashcard-speech-btn[data-speech-state="paused"] {
+  background: #22c55e;
+  color: #020617;
+}
