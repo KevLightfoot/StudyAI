@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>StudyAI</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>StudyAI</h1>
+      <p>Paste a study guide or topic list. StudyAI will extract topics, let you choose what matters, then build a real study guide.</p>
+    </header>
+
+    <section id="inputCard" class="card">
+      <h2>1. Paste Study Material</h2>
+      <textarea id="studyGuideInput" placeholder="Paste your study guide, objectives, notes, or topic list here..."></textarea>
+      
+      <div class="input-actions">
+        <button id="uploadPdfBtn" type="button">Upload PDF</button>
+        <button id="openSavedBtn" type="button">Open Saved Files</button>
+        <button id="saveTextBtn" type="button">Save Current Text</button>
+      </div>
+
+      <input id="pdfInput" type="file" accept="application/pdf" hidden>
+
+      <div id="textareaCoach" class="textarea-coach hidden">
+        <img src="assets/pointing_panda.png" alt="Panda">
+        <div>
+          <button id="closeCoachBtn" type="button">×</button>
+          <p>Paste from clipoard, add a file, or view your saved ones.</p>
+        </div>
+      </div>
+      <div class="extract-wrapper">
+        <button id="extractBtn">Extract Topics</button>
+      </div>    
+    </section>
+
+    <section id="topicsCard" class="card hidden">
+      <h2>2. Choose Topics</h2>
+
+      <div id="topicsContainer">Extracted topics will appear here.</div>
+
+      <div id="topicsLoadingPanda" class="hidden">
+        <img src="assets/panda1.gif" alt="Dancing panda">
+        <p>StudyAI is extracting your topics...</p>
+      </div>
+
+      <button id="generateBtn" disabled>Generate Study Kit</button>
+    </section>
+
+    <section id="outputCard" class="card output-card hidden">
+      <h2>3. Generated Study Kit</h2>
+
+      <div id="loadingPanda" class="hidden">
+        <img src="assets/panda2.gif" alt="Dancing panda">
+        <p>StudyAI is building your study guide...</p>
+
+        <div class="progress-wrapper">
+          <div id="progressBar" class="progress-bar-fill"></div>
+        </div>
+
+        <p id="progressText">Starting...</p>
+      </div>
+
+      <div class="study-kit-actions">
+        <button id="downloadBtn" class="hidden">Download Study Guide</button>
+        <button id="saveStudyKitBtn" class="hidden" type="button">Save Study Kit</button>
+        <button id="saveAllBtn" class="hidden" type="button">Save All</button>
+      </div>
+
+      <div id="output">Your result will appear here.</div>
+    </section>
+
+    <section id="savedResourcesCard" class="card saved-resources-card hidden">
+      <h2>Saved Resources</h2>
+      <p class="saved-resources-helper">Open saved study kits, flashcards, PDFs, or text without regenerating.</p>
+      <div id="savedResourcesList"></div>
+    </section>
+  </main>
+
+  <div id="savedFilesModal" class="saved-modal hidden">
+    <div class="saved-card">
+      <h2>Saved Study Materials</h2>
+      <div id="savedFilesList"></div>
+      <button id="closeSavedBtn" type="button">Close</button>
+    </div>
+  </div>
+
+  <div id="pdfPreviewModal" class="pdf-modal hidden">
+  <div class="pdf-card">
+    <div class="pdf-header">
+      <h2>PDF Preview</h2>
+      <button id="closePdfPreviewBtn" type="button">Close</button>
+    </div>
+
+    <iframe id="pdfPreviewFrame"></iframe>
+    <div id="pdfReadableText" class="pdf-readable-text hidden"></div>
+
+    <div class="pdf-actions">
+      <button id="useFullPdfTextBtn" type="button">Use Full PDF Text</button>
+      <button id="savePdfFileBtn" type="button">Save PDF File</button>
+      <button id="readablePdfTextBtn" type="button">Readable Text View</button>
+    </div>
+  </div>
+</div>
+
+
+  <div id="welcomeOverlay" class="welcome-overlay">
+    <div class="welcome-card">
+      <img src="assets/welcome_panda.gif" alt="Welcome panda">
+
+      <h2>Welcome to StudyAI</h2>
+
+      <p>
+        Paste your study guide, objectives, or notes. StudyAI will extract the important topics,
+        let you choose what to study, then build a full interactive study guide.
+      </p>
+
+      <div class="welcome-steps">
+        <p><strong>1.</strong> Paste your material.</p>
+        <p><strong>2.</strong> Extract topics.</p>
+        <p><strong>3.</strong> Choose what matters.</p>
+        <p><strong>4.</strong> Generate your study kit.</p>
+      </div>
+
+      <button id="closeWelcomeBtn">Start Studying</button>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
